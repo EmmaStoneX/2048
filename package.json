@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "tsc src/game/types.ts src/game/engine.ts tests/engine.test.ts --module commonjs --target es2022 --outDir .tmp/tests --skipLibCheck && node --test .tmp/tests/tests/engine.test.js"
   },
   "dependencies": {
     "next": "16.2.6",
