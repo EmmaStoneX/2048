@@ -83,16 +83,11 @@ export function Game() {
 
   return (
     <main className="flex h-dvh overflow-hidden bg-[#E6DDD3] text-[#1A1A1A] sm:items-center sm:justify-center sm:p-4">
-      <section className="mx-auto flex h-full w-full max-w-[430px] flex-col overflow-hidden bg-[#F3EBE2] px-5 py-4 shadow-[0_20px_60px_rgba(26,26,26,0.16)] min-[820px]:py-5 sm:max-h-[932px] sm:rounded-[40px]">
-        <div className="flex flex-1 flex-col justify-between gap-3">
-          <header className="flex items-end justify-between gap-4">
-            <div>
-              <h1 className="text-4xl font-black tracking-tight min-[820px]:text-5xl">2048</h1>
-              <p className="mt-1 text-sm font-medium text-[#6B6B6B]">{subtitle}</p>
-            </div>
-            <div className="rounded-full bg-[#FFF8EF] px-3 py-2 text-xs font-black text-[#6B6B6B] shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-              在线版
-            </div>
+      <section className="mx-auto flex h-full w-full max-w-[430px] flex-col overflow-hidden bg-[#F3EBE2] px-3 py-3 shadow-[0_20px_60px_rgba(26,26,26,0.16)] min-[820px]:px-5 min-[820px]:py-5 sm:max-h-[932px] sm:rounded-[40px]">
+        <div className="flex flex-1 flex-col justify-between gap-2.5">
+          <header>
+            <h1 className="text-3xl font-black leading-none tracking-tight min-[820px]:text-5xl">2048</h1>
+            <p className="mt-1 text-xs font-medium text-[#6B6B6B] min-[820px]:text-sm">{subtitle}</p>
           </header>
 
           <ScorePanel score={state.score} bestScore={state.bestScore} />

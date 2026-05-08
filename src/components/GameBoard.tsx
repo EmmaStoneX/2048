@@ -12,8 +12,7 @@ export function GameBoard({ board, onMove }: GameBoardProps) {
 
   return (
     <section
-      className="mx-auto grid aspect-square touch-none select-none grid-cols-4 gap-2 rounded-[24px] bg-[#B8AA9D] p-2 min-[820px]:gap-2.5 min-[820px]:rounded-[28px] min-[820px]:p-2.5"
-      style={{ width: "clamp(260px, calc(100dvh - 406px), 100%)" }}
+      className="mx-auto grid aspect-square w-full touch-none select-none grid-cols-4 gap-2 rounded-[24px] bg-[#B8AA9D] p-2 min-[820px]:gap-2.5 min-[820px]:rounded-[28px] min-[820px]:p-2.5"
       aria-label="2048 棋盘"
       {...swipeHandlers}
     >

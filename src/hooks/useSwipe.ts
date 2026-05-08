@@ -1,53 +1,67 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import type { TouchEvent } from "react";
+import type { PointerEvent } from "react";
 import type { Direction } from "@/src/game/types";
 
 type Point = {
   x: number;
   y: number;
+  pointerId: number;
 };
 
-export function useSwipe(onSwipe: (direction: Direction) => void, minDistance = 32) {
+export function useSwipe(onSwipe: (direction: Direction) => void, minDistance = 28) {
   const start = useRef<Point | null>(null);
 
-  const onTouchStart = useCallback((event: TouchEvent<HTMLElement>) => {
-    const touch = event.touches[0];
-    start.current = { x: touch.clientX, y: touch.clientY };
+  const onPointerDown = useCallback((event: PointerEvent<HTMLElement>) => {
+    if (!event.isPrimary) {
+      return;
+    }
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    start.current = {
+      x: event.clientX,
+      y: event.clientY,
+      pointerId: event.pointerId,
+    };
   }, []);
 
-  const onTouchMove = useCallback((event: TouchEvent<HTMLElement>) => {
-    if (start.current) {
+  const onPointerMove = useCallback((event: PointerEvent<HTMLElement>) => {
+    if (start.current?.pointerId === event.pointerId) {
       event.preventDefault();
     }
   }, []);
 
-  const onTouchEnd = useCallback(
-    (event: TouchEvent<HTMLElement>) => {
-      if (!start.current) {
+  const onPointerUp = useCallback(
+    (event: PointerEvent<HTMLElement>) => {
+      if (!start.current || start.current.pointerId !== event.pointerId) {
         return;
       }
 
-      const touch = event.changedTouches[0];
-      const deltaX = touch.clientX - start.current.x;
-      const deltaY = touch.clientY - start.current.y;
+      const deltaX = event.clientX - start.current.x;
+      const deltaY = event.clientY - start.current.y;
       const absX = Math.abs(deltaX);
       const absY = Math.abs(deltaY);
       start.current = null;
+
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
 
       if (Math.max(absX, absY) < minDistance) {
         return;
       }
 
-      if (absX > absY) {
-        onSwipe(deltaX > 0 ? "right" : "left");
-      } else {
-        onSwipe(deltaY > 0 ? "down" : "up");
-      }
+      onSwipe(absX > absY ? (deltaX > 0 ? "right" : "left") : deltaY > 0 ? "down" : "up");
     },
     [minDistance, onSwipe],
   );
 
-  return { onTouchStart, onTouchMove, onTouchEnd };
+  const onPointerCancel = useCallback((event: PointerEvent<HTMLElement>) => {
+    if (start.current?.pointerId === event.pointerId) {
+      start.current = null;
+    }
+  }, []);
+
+  return { onPointerDown, onPointerMove, onPointerUp, onPointerCancel };
 }
