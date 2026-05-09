@@ -5,10 +5,14 @@ export function readBestScore() {
     return 0;
   }
 
-  const value = window.localStorage.getItem(BEST_SCORE_KEY);
-  const parsed = value === null ? 0 : Number.parseInt(value, 10);
+  try {
+    const value = window.localStorage.getItem(BEST_SCORE_KEY);
+    const parsed = value === null ? 0 : Number.parseInt(value, 10);
 
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  } catch {
+    return 0;
+  }
 }
 
 export function writeBestScore(score: number) {
@@ -16,5 +20,9 @@ export function writeBestScore(score: number) {
     return;
   }
 
-  window.localStorage.setItem(BEST_SCORE_KEY, String(Math.max(0, score)));
+  try {
+    window.localStorage.setItem(BEST_SCORE_KEY, String(Math.max(0, score)));
+  } catch {
+    return;
+  }
 }

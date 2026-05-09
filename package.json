@@ -2,6 +2,13 @@
   "name": "ios-2048",
   "version": "0.1.0",
   "private": true,
+  "browserslist": [
+    "chrome 111",
+    "edge 111",
+    "firefox 111",
+    "safari >= 16",
+    "ios_saf >= 16"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -22,6 +29,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.5"
   }
 }
