@@ -27,7 +27,7 @@ export function GameTile({ tile }: GameTileProps) {
 
   return (
     <div
-      className={`flex aspect-square items-center justify-center rounded-2xl font-mono font-black leading-none shadow-[inset_0_-2px_0_rgba(0,0,0,0.04)] ${sizeClass} ${tile?.fresh ? "tile-fresh" : ""} ${tile?.merged ? "tile-merged" : ""}`}
+      className={`tile-cell flex aspect-square items-center justify-center rounded-2xl font-mono font-black leading-none shadow-[inset_0_-2px_0_rgba(0,0,0,0.04)] ${sizeClass} ${tile?.fresh ? "tile-fresh" : ""} ${tile?.merged ? "tile-merged" : ""}`}
       style={{ backgroundColor: style.background, color: style.color }}
       aria-label={tile ? `数字 ${tile.value}` : "空格"}
     >
