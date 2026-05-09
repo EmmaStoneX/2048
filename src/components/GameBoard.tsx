@@ -57,7 +57,7 @@ export function GameBoard({ board, animation, onMove, onAnimatingChange }: GameB
   const swipeHandlers = useSwipe(onMove);
   const [metrics, setMetrics] = useState<BoardMetrics>(emptyMetrics);
   const [activeAnimation, setActiveAnimation] = useState<MoveAnimation | null>(null);
-  const [animationPhase, setAnimationPhase] = useState<"idle" | "from" | "to">("idle");
+  const [animationPhase, setAnimationPhase] = useState<"idle" | "from" | "to" | "settled">("idle");
 
   useEffect(() => {
     const element = boardRef.current;
@@ -91,7 +91,8 @@ export function GameBoard({ board, animation, onMove, onAnimatingChange }: GameB
 
   useEffect(() => {
     let moveFrame = 0;
-    let finishTimeout = 0;
+    let settleTimeout = 0;
+    let cleanupTimeout = 0;
 
     const startFrame = window.requestAnimationFrame(() => {
       if (!animation || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -108,21 +109,27 @@ export function GameBoard({ board, animation, onMove, onAnimatingChange }: GameB
       moveFrame = window.requestAnimationFrame(() => {
         setAnimationPhase("to");
       });
-      finishTimeout = window.setTimeout(() => {
-        setActiveAnimation(null);
-        setAnimationPhase("idle");
+      settleTimeout = window.setTimeout(() => {
+        setAnimationPhase("settled");
         onAnimatingChange(false);
-      }, animation.durationMs + 60);
+
+        cleanupTimeout = window.setTimeout(() => {
+          setActiveAnimation(null);
+          setAnimationPhase("idle");
+        }, 120);
+      }, animation.durationMs);
     });
 
     return () => {
       window.cancelAnimationFrame(startFrame);
       window.cancelAnimationFrame(moveFrame);
-      window.clearTimeout(finishTimeout);
+      window.clearTimeout(settleTimeout);
+      window.clearTimeout(cleanupTimeout);
     };
   }, [animation, onAnimatingChange]);
 
-  const hiddenTargets = activeAnimation
+  const showMovingTiles = activeAnimation !== null && animationPhase !== "settled";
+  const hiddenTargets = showMovingTiles
     ? new Set([...activeAnimation.moves.map((move) => move.to), ...activeAnimation.spawns.map((spawn) => spawn.at)])
     : null;
 
@@ -142,12 +149,13 @@ export function GameBoard({ board, animation, onMove, onAnimatingChange }: GameB
         {board.map((tile, index) =>
           tile && !hiddenTargets?.has(index) ? <GameTile key={tile.id} tile={tile} style={tilePosition(index, metrics)} /> : null,
         )}
-        {activeAnimation?.moves.map((move) => {
-          const tile: Tile = { id: move.tileId, value: move.value };
-          const index = animationPhase === "to" ? move.to : move.from;
+        {showMovingTiles &&
+          activeAnimation.moves.map((move) => {
+            const tile: Tile = { id: move.tileId, value: move.value };
+            const index = animationPhase === "to" ? move.to : move.from;
 
-          return <GameTile key={`moving-${activeAnimation.id}-${move.tileId}`} tile={tile} style={tilePosition(index, metrics, activeAnimation.durationMs, 2)} />;
-        })}
+            return <GameTile key={`moving-${activeAnimation.id}-${move.tileId}`} tile={tile} style={tilePosition(index, metrics, activeAnimation.durationMs, 2)} />;
+          })}
       </div>
     </section>
   );
