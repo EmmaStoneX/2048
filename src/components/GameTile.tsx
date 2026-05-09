@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { Tile } from "@/src/game/types";
 
 const tileStyles: Record<number, { background: string; color: string }> = {
@@ -15,23 +16,24 @@ const tileStyles: Record<number, { background: string; color: string }> = {
 };
 
 type GameTileProps = {
-  tile: Tile | null;
+  tile: Tile;
+  className?: string;
+  style?: CSSProperties;
 };
 
-export function GameTile({ tile }: GameTileProps) {
-  const style = tile
-    ? (tileStyles[tile.value] ?? { background: "#1A1A1A", color: "#FFFFFF" })
-    : { background: "rgba(204, 192, 179, 0.55)", color: "transparent" };
-  const digits = tile ? String(tile.value).length : 1;
+export function GameTile({ tile, className = "", style }: GameTileProps) {
+  const colors = tileStyles[tile.value] ?? { background: "#1A1A1A", color: "#FFFFFF" };
+  const digits = String(tile.value).length;
   const sizeClass = digits >= 4 ? "text-[clamp(1.15rem,6vw,1.55rem)]" : digits >= 3 ? "text-[clamp(1.35rem,7vw,1.8rem)]" : "text-[clamp(1.75rem,9vw,2.35rem)]";
 
   return (
-    <div
-      className={`tile-cell flex aspect-square items-center justify-center rounded-2xl font-mono font-black leading-none shadow-[inset_0_-2px_0_rgba(0,0,0,0.04)] ${sizeClass} ${tile?.fresh ? "tile-fresh" : ""} ${tile?.merged ? "tile-merged" : ""}`}
-      style={{ backgroundColor: style.background, color: style.color }}
-      aria-label={tile ? `数字 ${tile.value}` : "空格"}
-    >
-      {tile?.value}
+    <div className={className} style={style} aria-label={`数字 ${tile.value}`}>
+      <div
+        className={`tile-cell flex h-full w-full items-center justify-center rounded-2xl font-mono font-black leading-none shadow-[inset_0_-2px_0_rgba(0,0,0,0.04)] ${sizeClass} ${tile.fresh ? "tile-fresh" : ""} ${tile.merged ? "tile-merged" : ""}`}
+        style={{ backgroundColor: colors.background, color: colors.color }}
+      >
+        {tile.value}
+      </div>
     </div>
   );
 }

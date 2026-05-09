@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BOARD_CELLS, createInitialState, move, undo } from "@/src/game/engine";
 import { readBestScore, writeBestScore } from "@/src/game/storage";
 import type { Direction, GameState } from "@/src/game/types";
@@ -16,6 +16,7 @@ const emptyState: GameState = {
   bestScore: 0,
   previous: null,
   status: "playing",
+  animation: null,
 };
 
 const keyMap: Record<string, Direction | undefined> = {
@@ -28,6 +29,8 @@ const keyMap: Record<string, Direction | undefined> = {
 export function Game() {
   const [state, setState] = useState<GameState>(emptyState);
   const [ready, setReady] = useState(false);
+  const stateRef = useRef<GameState>(emptyState);
+  const animationLocked = useRef(false);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -39,13 +42,38 @@ export function Game() {
   }, []);
 
   useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
     if (ready) {
       writeBestScore(state.bestScore);
     }
   }, [ready, state.bestScore]);
 
   const handleMove = useCallback((direction: Direction) => {
-    setState((current) => move(current, direction));
+    if (animationLocked.current) {
+      return;
+    }
+
+    const current = stateRef.current;
+    const next = move(current, direction);
+
+    if (next === current) {
+      return;
+    }
+
+    stateRef.current = next;
+
+    if (next.animation) {
+      animationLocked.current = true;
+    }
+
+    setState(next);
+  }, []);
+
+  const handleAnimatingChange = useCallback((animating: boolean) => {
+    animationLocked.current = animating;
   }, []);
 
   useEffect(() => {
@@ -66,11 +94,17 @@ export function Game() {
   }, [handleMove]);
 
   const handleNewGame = useCallback(() => {
-    setState((current) => createInitialState(current.bestScore));
+    animationLocked.current = false;
+    const next = createInitialState(stateRef.current.bestScore);
+    stateRef.current = next;
+    setState(next);
   }, []);
 
   const handleUndo = useCallback(() => {
-    setState((current) => undo(current));
+    animationLocked.current = false;
+    const next = undo(stateRef.current);
+    stateRef.current = next;
+    setState(next);
   }, []);
 
   const subtitle = useMemo(() => {
@@ -92,7 +126,7 @@ export function Game() {
 
           <ScorePanel score={state.score} bestScore={state.bestScore} />
           <GameStatus status={state.status} />
-          <GameBoard board={state.board} onMove={handleMove} />
+          <GameBoard board={state.board} animation={state.animation} onMove={handleMove} onAnimatingChange={handleAnimatingChange} />
           <GameActions canUndo={state.previous !== null} onUndo={handleUndo} onNewGame={handleNewGame} />
           <BestProgress score={state.score} bestScore={state.bestScore} />
         </div>

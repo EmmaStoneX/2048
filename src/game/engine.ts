@@ -1,19 +1,41 @@
-import type { Board, Direction, GameSnapshot, GameState, RandomSource, Tile } from "./types";
+import type { Board, Direction, GameSnapshot, GameState, RandomSource, Tile, TileMove, TileSpawn } from "./types";
 
 export const BOARD_SIZE = 4;
 export const BOARD_CELLS = BOARD_SIZE * BOARD_SIZE;
+
+const MOVE_ANIMATION_DURATION_MS = 140;
 
 type MoveOptions = {
   random?: RandomSource;
   spawn?: boolean;
 };
 
+type LineTile = {
+  tile: Tile;
+  offset: number;
+};
+
+type LineMove = {
+  tileId: string;
+  value: number;
+  fromOffset: number;
+  toOffset: number;
+  kind: TileMove["kind"];
+};
+
 type MovedLine = {
   line: Board;
   gained: number;
+  moves: LineMove[];
+};
+
+type SpawnedBoard = {
+  board: Board;
+  spawn: TileSpawn | null;
 };
 
 let tileCounter = 0;
+let animationCounter = 0;
 
 function createTile(value: number, fresh = false, merged = false): Tile {
   tileCounter += 1;
@@ -72,27 +94,33 @@ function setLine(board: Board, direction: Direction, lineIndex: number, line: Bo
 }
 
 function moveLine(line: Board): MovedLine {
-  const compacted = line.filter((tile): tile is Tile => tile !== null);
+  const compacted = line.flatMap((tile, offset): LineTile[] => (tile === null ? [] : [{ tile, offset }]));
   const moved: Tile[] = [];
+  const moves: LineMove[] = [];
   let gained = 0;
 
   for (let index = 0; index < compacted.length; index += 1) {
     const current = compacted[index];
     const next = compacted[index + 1];
+    const toOffset = moved.length;
 
-    if (next && current.value === next.value) {
-      const value = current.value * 2;
+    if (next && current.tile.value === next.tile.value) {
+      const value = current.tile.value * 2;
       moved.push(createTile(value, false, true));
+      moves.push({ tileId: current.tile.id, value: current.tile.value, fromOffset: current.offset, toOffset, kind: "merge" });
+      moves.push({ tileId: next.tile.id, value: next.tile.value, fromOffset: next.offset, toOffset, kind: "merge" });
       gained += value;
       index += 1;
     } else {
-      moved.push(cloneTile(current));
+      moved.push(cloneTile(current.tile));
+      moves.push({ tileId: current.tile.id, value: current.tile.value, fromOffset: current.offset, toOffset, kind: "move" });
     }
   }
 
   return {
     line: [...moved, ...Array.from({ length: BOARD_SIZE - moved.length }, () => null)],
     gained,
+    moves,
   };
 }
 
@@ -106,6 +134,29 @@ function resolveStatus(board: Board) {
   }
 
   return canMove(board) ? "playing" : "lost";
+}
+
+function addRandomTileForMove(board: Board, random: RandomSource = Math.random): SpawnedBoard {
+  const emptyIndexes = board.flatMap((tile, index) => (tile === null ? [index] : []));
+
+  if (emptyIndexes.length === 0) {
+    return { board: cloneBoard(board), spawn: null };
+  }
+
+  const nextBoard = cloneBoard(board);
+  const at = emptyIndexes[Math.floor(random() * emptyIndexes.length)];
+  const value = random() < 0.9 ? 2 : 4;
+  const tile = createTile(value, true);
+  nextBoard[at] = tile;
+
+  return {
+    board: nextBoard,
+    spawn: {
+      tileId: tile.id,
+      value,
+      at,
+    },
+  };
 }
 
 export function boardValues(board: Board) {
@@ -143,6 +194,7 @@ export function createInitialState(bestScore = 0, random: RandomSource = Math.ra
     bestScore,
     previous: null,
     status: "playing",
+    animation: null,
   };
 }
 
@@ -153,12 +205,22 @@ export function move(state: GameState, direction: Direction, options: MoveOption
 
   const board = clearFlags(state.board);
   const movedBoard = emptyBoard();
+  const moves: TileMove[] = [];
   let gained = 0;
 
   for (let lineIndex = 0; lineIndex < BOARD_SIZE; lineIndex += 1) {
     const movedLine = moveLine(getLine(board, direction, lineIndex));
     setLine(movedBoard, direction, lineIndex, movedLine.line);
     gained += movedLine.gained;
+    moves.push(
+      ...movedLine.moves.map((lineMove) => ({
+        tileId: lineMove.tileId,
+        value: lineMove.value,
+        from: indexFor(direction, lineIndex, lineMove.fromOffset),
+        to: indexFor(direction, lineIndex, lineMove.toOffset),
+        kind: lineMove.kind,
+      })),
+    );
   }
 
   if (valuesEqual(board, movedBoard)) {
@@ -171,15 +233,23 @@ export function move(state: GameState, direction: Direction, options: MoveOption
     status: state.status,
   };
 
-  const spawnedBoard = options.spawn === false ? movedBoard : addRandomTile(movedBoard, options.random ?? Math.random);
+  const spawned = options.spawn === false ? { board: movedBoard, spawn: null } : addRandomTileForMove(movedBoard, options.random ?? Math.random);
   const score = state.score + gained;
 
+  animationCounter += 1;
+
   return {
-    board: spawnedBoard,
+    board: spawned.board,
     score,
     bestScore: Math.max(state.bestScore, score),
     previous,
-    status: resolveStatus(spawnedBoard),
+    status: resolveStatus(spawned.board),
+    animation: {
+      id: animationCounter,
+      moves,
+      spawns: spawned.spawn ? [spawned.spawn] : [],
+      durationMs: MOVE_ANIMATION_DURATION_MS,
+    },
   };
 }
 
@@ -194,6 +264,7 @@ export function undo(state: GameState): GameState {
     bestScore: Math.max(state.bestScore, state.previous.score),
     previous: null,
     status: state.previous.status,
+    animation: null,
   };
 }
 

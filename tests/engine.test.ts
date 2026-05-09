@@ -5,6 +5,7 @@ import {
   calculateBestProgress,
   canMove,
   createBoardFromValues,
+  createInitialState,
   move,
   undo,
 } from "../src/game/engine";
@@ -17,6 +18,7 @@ function makeState(values: Array<number | null>, score = 0): GameState {
     bestScore: score,
     previous: null,
     status: "playing",
+    animation: null,
   };
 }
 
@@ -90,6 +92,7 @@ describe("2048 engine", () => {
 
     assert.equal(next, state);
     assert.equal(next.previous, null);
+    assert.equal(next.animation, null);
   });
 
   it("spawns a new tile only after a valid move", () => {
@@ -106,6 +109,70 @@ describe("2048 engine", () => {
     assert.notEqual(next.previous, null);
   });
 
+  it("records move animation paths", () => {
+    const state = makeState([
+      null, 2, null, null,
+      null, null, null, null,
+      null, null, null, null,
+      null, null, null, null,
+    ]);
+    const tile = state.board[1];
+
+    const next = move(state, "left", { spawn: false });
+
+    if (next.animation === null || tile === null) {
+      assert.fail("Expected a move animation");
+    }
+
+    assert.deepEqual(next.animation.moves, [
+      { tileId: tile.id, value: 2, from: 1, to: 0, kind: "move" },
+    ]);
+    assert.deepEqual(next.animation.spawns, []);
+  });
+
+  it("records merge animation paths", () => {
+    const state = makeState([
+      2, 2, null, null,
+      null, null, null, null,
+      null, null, null, null,
+      null, null, null, null,
+    ]);
+    const first = state.board[0];
+    const second = state.board[1];
+
+    const next = move(state, "left", { spawn: false });
+
+    if (next.animation === null || first === null || second === null) {
+      assert.fail("Expected a merge animation");
+    }
+
+    assert.deepEqual(next.animation.moves, [
+      { tileId: first.id, value: 2, from: 0, to: 0, kind: "merge" },
+      { tileId: second.id, value: 2, from: 1, to: 0, kind: "merge" },
+    ]);
+    assert.equal(next.board[0]?.merged, true);
+  });
+
+  it("records spawned tile animation data", () => {
+    const state = makeState([
+      null, 2, null, null,
+      null, null, null, null,
+      null, null, null, null,
+      null, null, null, null,
+    ]);
+
+    const next = move(state, "left", { random: () => 0 });
+
+    if (next.animation === null) {
+      assert.fail("Expected spawn animation data");
+    }
+
+    assert.deepEqual(next.animation.spawns, [
+      { tileId: next.board[1]?.id, value: 2, at: 1 },
+    ]);
+    assert.equal(next.board[1]?.fresh, true);
+  });
+
   it("restores one previous state with undo", () => {
     const state = makeState([
       2, 2, null, null,
@@ -120,6 +187,13 @@ describe("2048 engine", () => {
     assert.deepEqual(boardValues(restored.board), boardValues(state.board));
     assert.equal(restored.score, 0);
     assert.equal(restored.previous, null);
+    assert.equal(restored.animation, null);
+  });
+
+  it("starts without animation data", () => {
+    const state = createInitialState(0, () => 0);
+
+    assert.equal(state.animation, null);
   });
 
   it("detects a lost board", () => {
