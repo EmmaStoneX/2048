@@ -56,8 +56,7 @@ export function GameBoard({ board, animation, onMove, onAnimatingChange }: GameB
   const gridRef = useRef<HTMLDivElement>(null);
   const swipeHandlers = useSwipe(onMove);
   const [metrics, setMetrics] = useState<BoardMetrics>(emptyMetrics);
-  const [activeAnimation, setActiveAnimation] = useState<MoveAnimation | null>(null);
-  const [animationPhase, setAnimationPhase] = useState<"idle" | "from" | "to" | "settled">("idle");
+  const [animationPhase, setAnimationPhase] = useState<{ animationId: number; value: "to" | "settled" } | null>(null);
 
   useEffect(() => {
     const element = boardRef.current;
@@ -92,45 +91,32 @@ export function GameBoard({ board, animation, onMove, onAnimatingChange }: GameB
   useEffect(() => {
     let moveFrame = 0;
     let settleTimeout = 0;
-    let cleanupTimeout = 0;
 
-    const startFrame = window.requestAnimationFrame(() => {
-      if (!animation || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        setActiveAnimation(null);
-        setAnimationPhase("idle");
-        onAnimatingChange(false);
-        return;
-      }
+    if (!animation || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      onAnimatingChange(false);
+      return;
+    }
 
-      setActiveAnimation(animation);
-      setAnimationPhase("from");
-      onAnimatingChange(true);
+    onAnimatingChange(true);
 
-      moveFrame = window.requestAnimationFrame(() => {
-        setAnimationPhase("to");
-      });
-      settleTimeout = window.setTimeout(() => {
-        setAnimationPhase("settled");
-        onAnimatingChange(false);
-
-        cleanupTimeout = window.setTimeout(() => {
-          setActiveAnimation(null);
-          setAnimationPhase("idle");
-        }, 120);
-      }, animation.durationMs);
+    moveFrame = window.requestAnimationFrame(() => {
+      setAnimationPhase({ animationId: animation.id, value: "to" });
     });
+    settleTimeout = window.setTimeout(() => {
+      setAnimationPhase({ animationId: animation.id, value: "settled" });
+      onAnimatingChange(false);
+    }, animation.durationMs);
 
     return () => {
-      window.cancelAnimationFrame(startFrame);
       window.cancelAnimationFrame(moveFrame);
       window.clearTimeout(settleTimeout);
-      window.clearTimeout(cleanupTimeout);
     };
   }, [animation, onAnimatingChange]);
 
-  const showMovingTiles = activeAnimation !== null && animationPhase !== "settled";
+  const currentAnimationPhase = animationPhase && animationPhase.animationId === animation?.id ? animationPhase.value : "from";
+  const showMovingTiles = animation !== null && currentAnimationPhase !== "settled";
   const hiddenTargets = showMovingTiles
-    ? new Set([...activeAnimation.moves.map((move) => move.to), ...activeAnimation.spawns.map((spawn) => spawn.at)])
+    ? new Set([...animation.moves.map((move) => move.to), ...animation.spawns.map((spawn) => spawn.at)])
     : null;
 
   return (
@@ -150,11 +136,11 @@ export function GameBoard({ board, animation, onMove, onAnimatingChange }: GameB
           tile && !hiddenTargets?.has(index) ? <GameTile key={tile.id} tile={tile} style={tilePosition(index, metrics)} /> : null,
         )}
         {showMovingTiles &&
-          activeAnimation.moves.map((move) => {
+          animation.moves.map((move) => {
             const tile: Tile = { id: move.tileId, value: move.value };
-            const index = animationPhase === "to" ? move.to : move.from;
+            const index = currentAnimationPhase === "to" ? move.to : move.from;
 
-            return <GameTile key={`moving-${activeAnimation.id}-${move.tileId}`} tile={tile} style={tilePosition(index, metrics, activeAnimation.durationMs, 2)} />;
+            return <GameTile key={`moving-${animation.id}-${move.tileId}`} tile={tile} style={tilePosition(index, metrics, animation.durationMs, 2)} />;
           })}
       </div>
     </section>
