@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { BOARD_CELLS, BOARD_SIZE } from "@/src/game/engine";
 import { useSwipe } from "@/src/hooks/useSwipe";
@@ -56,12 +56,8 @@ export function GameBoard({ board, animation, onMove, onAnimatingChange }: GameB
   const gridRef = useRef<HTMLDivElement>(null);
   const [metrics, setMetrics] = useState<BoardMetrics>(emptyMetrics);
   const [animationPhase, setAnimationPhase] = useState<{ animationId: number; value: "to" | "settled" } | null>(null);
-  const [swipeActive, setSwipeActive] = useState(false);
-  const handleSwipeActiveChange = useCallback((active: boolean) => {
-    setSwipeActive(active);
-  }, []);
   const swipeDistance = metrics.cellSize > 0 ? Math.max(24, Math.min(44, metrics.cellSize * 0.18)) : 28;
-  const swipeHandlers = useSwipe(onMove, { minDistance: swipeDistance, onActiveChange: handleSwipeActiveChange });
+  const swipeHandlers = useSwipe(onMove, { minDistance: swipeDistance });
 
   useEffect(() => {
     const element = boardRef.current;
@@ -138,7 +134,7 @@ export function GameBoard({ board, animation, onMove, onAnimatingChange }: GameB
   return (
     <section
       ref={boardRef}
-      className={`relative mx-auto aspect-square w-full touch-none select-none overflow-hidden rounded-[24px] p-2 transition-[background-color,transform] duration-100 will-change-transform min-[820px]:rounded-[28px] min-[820px]:p-2.5 ${swipeActive ? "scale-[0.985] bg-[#AA9D91]" : "scale-100 bg-[#B8AA9D]"}`}
+      className="relative mx-auto aspect-square w-full touch-none select-none overflow-hidden rounded-[24px] bg-[#B8AA9D] p-2 min-[820px]:rounded-[28px] min-[820px]:p-2.5"
       aria-label="2048 棋盘"
       {...swipeHandlers}
     >

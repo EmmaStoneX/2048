@@ -12,25 +12,19 @@ type Point = {
 
 type UseSwipeOptions = {
   minDistance?: number;
-  onActiveChange?: (active: boolean) => void;
 };
 
 export function useSwipe(onSwipe: (direction: Direction) => void, options: UseSwipeOptions = {}) {
-  const { minDistance = 28, onActiveChange } = options;
+  const { minDistance = 28 } = options;
   const start = useRef<Point | null>(null);
 
-  const resetStart = useCallback(
-    (target: HTMLElement, pointerId: number) => {
-      start.current = null;
+  const resetStart = useCallback((target: HTMLElement, pointerId: number) => {
+    start.current = null;
 
-      if (target.hasPointerCapture(pointerId)) {
-        target.releasePointerCapture(pointerId);
-      }
-
-      onActiveChange?.(false);
-    },
-    [onActiveChange],
-  );
+    if (target.hasPointerCapture(pointerId)) {
+      target.releasePointerCapture(pointerId);
+    }
+  }, []);
 
   const onPointerDown = useCallback((event: PointerEvent<HTMLElement>) => {
     if (!event.isPrimary) {
@@ -43,8 +37,7 @@ export function useSwipe(onSwipe: (direction: Direction) => void, options: UseSw
       y: event.clientY,
       pointerId: event.pointerId,
     };
-    onActiveChange?.(true);
-  }, [onActiveChange]);
+  }, []);
 
   const onPointerMove = useCallback((event: PointerEvent<HTMLElement>) => {
     if (start.current?.pointerId === event.pointerId) {

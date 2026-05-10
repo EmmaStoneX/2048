@@ -151,12 +151,18 @@ export function playMoveSound() {
   }
 }
 
-export function playMergeSound(mergeCount: number) {
+export function playMergeSound(mergeCount: number, highestMergedValue = 4) {
   try {
     const weight = Math.min(mergeCount, 4);
-    playTone(245 + weight * 12, 0.085, 0.075, "sine");
-    playTone(490 + weight * 18, 0.065, 0.038, "triangle", 0.006);
-    playFilteredNoise(0.034, 0.032, 1500, 0.002);
+    const valueLift = Math.min(7, Math.max(0, Math.log2(highestMergedValue) - 2));
+    playTone(245 + weight * 12 + valueLift * 18, 0.085, 0.07, "sine");
+    playTone(490 + weight * 18 + valueLift * 28, 0.065, 0.036, "triangle", 0.006);
+
+    if (highestMergedValue >= 512) {
+      playTone(720 + valueLift * 26, 0.075, 0.026, "sine", 0.035);
+    }
+
+    playFilteredNoise(0.034, 0.03, 1500 + valueLift * 80, 0.002);
   } catch {
     return;
   }

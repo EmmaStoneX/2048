@@ -31,8 +31,8 @@ const keyMap: Record<string, Direction | undefined> = {
   d: "right",
 };
 
-function vibrate(pattern: VibratePattern) {
-  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+function vibrate(pattern: VibratePattern, enabled: boolean) {
+  if (enabled && typeof navigator !== "undefined" && "vibrate" in navigator) {
     navigator.vibrate(pattern);
   }
 }
@@ -44,12 +44,14 @@ export function Game() {
   const stateRef = useRef<GameState>(emptyState);
   const animationLocked = useRef(false);
   const queuedDirection = useRef<Direction | null>(null);
+  const soundEnabledRef = useRef(true);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
       const enabled = readSoundEnabled();
       setSoundEnabledState(enabled);
       setSoundEnabled(enabled);
+      soundEnabledRef.current = enabled;
       setState(createInitialState(readBestScore()));
       setReady(true);
     }, 0);
@@ -75,24 +77,24 @@ export function Game() {
       return;
     }
 
-    const mergeCount = next.animation?.moves.filter((tileMove) => tileMove.kind === "merge").length ?? 0;
+    const mergedValues = next.animation?.moves.filter((tileMove) => tileMove.kind === "merge").map((tileMove) => tileMove.value * 2) ?? [];
 
-    if (mergeCount > 0) {
-      playMergeSound(mergeCount);
-      vibrate(18);
+    if (mergedValues.length > 0) {
+      playMergeSound(Math.ceil(mergedValues.length / 2), Math.max(...mergedValues));
+      vibrate(18, soundEnabledRef.current);
     } else {
       playMoveSound();
-      vibrate(8);
+      vibrate(8, soundEnabledRef.current);
     }
 
     if (current.status !== "won" && next.status === "won") {
       playWinSound();
-      vibrate([20, 30, 20]);
+      vibrate([20, 30, 20], soundEnabledRef.current);
     }
 
     if (current.status !== "lost" && next.status === "lost") {
       playLoseSound();
-      vibrate([30, 40, 30]);
+      vibrate([30, 40, 30], soundEnabledRef.current);
     }
 
     stateRef.current = next;
@@ -180,6 +182,7 @@ export function Game() {
     const next = !soundEnabled;
     setSoundEnabledState(next);
     setSoundEnabled(next);
+    soundEnabledRef.current = next;
     writeSoundEnabled(next);
   }, [soundEnabled]);
 
@@ -217,7 +220,7 @@ export function Game() {
           </header>
 
           <ScorePanel score={state.score} bestScore={state.bestScore} />
-          <GameStatus status={state.status} />
+          <GameStatus status={state.status} onNewGame={handleNewGame} />
           <GameBoard board={state.board} animation={state.animation} onMove={handleMove} onAnimatingChange={handleAnimatingChange} />
           <GameActions canUndo={state.previous !== null} onUndo={handleUndo} onNewGame={handleNewGame} />
           <BestProgress score={state.score} bestScore={state.bestScore} />
