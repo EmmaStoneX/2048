@@ -25,7 +25,17 @@ const keyMap: Record<string, Direction | undefined> = {
   ArrowDown: "down",
   ArrowLeft: "left",
   ArrowRight: "right",
+  w: "up",
+  a: "left",
+  s: "down",
+  d: "right",
 };
+
+function vibrate(pattern: VibratePattern) {
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    navigator.vibrate(pattern);
+  }
+}
 
 export function Game() {
   const [state, setState] = useState<GameState>(emptyState);
@@ -33,6 +43,7 @@ export function Game() {
   const [soundEnabled, setSoundEnabledState] = useState(true);
   const stateRef = useRef<GameState>(emptyState);
   const animationLocked = useRef(false);
+  const queuedDirection = useRef<Direction | null>(null);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -56,13 +67,7 @@ export function Game() {
     }
   }, [ready, state.bestScore]);
 
-  const handleMove = useCallback((direction: Direction) => {
-    unlockAudio();
-
-    if (animationLocked.current) {
-      return;
-    }
-
+  const runMove = useCallback((direction: Direction) => {
     const current = stateRef.current;
     const next = move(current, direction);
 
@@ -74,16 +79,20 @@ export function Game() {
 
     if (mergeCount > 0) {
       playMergeSound(mergeCount);
+      vibrate(18);
     } else {
       playMoveSound();
+      vibrate(8);
     }
 
     if (current.status !== "won" && next.status === "won") {
       playWinSound();
+      vibrate([20, 30, 20]);
     }
 
     if (current.status !== "lost" && next.status === "lost") {
       playLoseSound();
+      vibrate([30, 40, 30]);
     }
 
     stateRef.current = next;
@@ -95,13 +104,45 @@ export function Game() {
     setState(next);
   }, []);
 
-  const handleAnimatingChange = useCallback((animating: boolean) => {
-    animationLocked.current = animating;
-  }, []);
+  const handleMove = useCallback(
+    (direction: Direction) => {
+      unlockAudio();
+
+      if (animationLocked.current) {
+        queuedDirection.current = direction;
+        return;
+      }
+
+      runMove(direction);
+    },
+    [runMove],
+  );
+
+  const handleAnimatingChange = useCallback(
+    (animating: boolean) => {
+      animationLocked.current = animating;
+
+      if (animating) {
+        return;
+      }
+
+      const direction = queuedDirection.current;
+      queuedDirection.current = null;
+
+      if (direction) {
+        window.requestAnimationFrame(() => {
+          if (!animationLocked.current) {
+            runMove(direction);
+          }
+        });
+      }
+    },
+    [runMove],
+  );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const direction = keyMap[event.key];
+      const direction = keyMap[event.key] ?? keyMap[event.key.toLowerCase()];
 
       if (!direction) {
         return;
@@ -119,6 +160,7 @@ export function Game() {
   const handleNewGame = useCallback(() => {
     unlockAudio();
     animationLocked.current = false;
+    queuedDirection.current = null;
     const next = createInitialState(stateRef.current.bestScore);
     stateRef.current = next;
     setState(next);
@@ -127,6 +169,7 @@ export function Game() {
   const handleUndo = useCallback(() => {
     unlockAudio();
     animationLocked.current = false;
+    queuedDirection.current = null;
     const next = undo(stateRef.current);
     stateRef.current = next;
     setState(next);

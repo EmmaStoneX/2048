@@ -10,8 +10,27 @@ type Point = {
   pointerId: number;
 };
 
-export function useSwipe(onSwipe: (direction: Direction) => void, minDistance = 28) {
+type UseSwipeOptions = {
+  minDistance?: number;
+  onActiveChange?: (active: boolean) => void;
+};
+
+export function useSwipe(onSwipe: (direction: Direction) => void, options: UseSwipeOptions = {}) {
+  const { minDistance = 28, onActiveChange } = options;
   const start = useRef<Point | null>(null);
+
+  const resetStart = useCallback(
+    (target: HTMLElement, pointerId: number) => {
+      start.current = null;
+
+      if (target.hasPointerCapture(pointerId)) {
+        target.releasePointerCapture(pointerId);
+      }
+
+      onActiveChange?.(false);
+    },
+    [onActiveChange],
+  );
 
   const onPointerDown = useCallback((event: PointerEvent<HTMLElement>) => {
     if (!event.isPrimary) {
@@ -24,7 +43,8 @@ export function useSwipe(onSwipe: (direction: Direction) => void, minDistance = 
       y: event.clientY,
       pointerId: event.pointerId,
     };
-  }, []);
+    onActiveChange?.(true);
+  }, [onActiveChange]);
 
   const onPointerMove = useCallback((event: PointerEvent<HTMLElement>) => {
     if (start.current?.pointerId === event.pointerId) {
@@ -42,11 +62,8 @@ export function useSwipe(onSwipe: (direction: Direction) => void, minDistance = 
       const deltaY = event.clientY - start.current.y;
       const absX = Math.abs(deltaX);
       const absY = Math.abs(deltaY);
-      start.current = null;
 
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      }
+      resetStart(event.currentTarget, event.pointerId);
 
       if (Math.max(absX, absY) < minDistance) {
         return;
@@ -54,14 +71,14 @@ export function useSwipe(onSwipe: (direction: Direction) => void, minDistance = 
 
       onSwipe(absX > absY ? (deltaX > 0 ? "right" : "left") : deltaY > 0 ? "down" : "up");
     },
-    [minDistance, onSwipe],
+    [minDistance, onSwipe, resetStart],
   );
 
   const onPointerCancel = useCallback((event: PointerEvent<HTMLElement>) => {
     if (start.current?.pointerId === event.pointerId) {
-      start.current = null;
+      resetStart(event.currentTarget, event.pointerId);
     }
-  }, []);
+  }, [resetStart]);
 
   return { onPointerDown, onPointerMove, onPointerUp, onPointerCancel };
 }

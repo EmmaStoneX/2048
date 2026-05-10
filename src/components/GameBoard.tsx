@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { BOARD_CELLS, BOARD_SIZE } from "@/src/game/engine";
 import { useSwipe } from "@/src/hooks/useSwipe";
@@ -54,9 +54,14 @@ function tilePosition(index: number, metrics: BoardMetrics, durationMs = 0, zInd
 export function GameBoard({ board, animation, onMove, onAnimatingChange }: GameBoardProps) {
   const boardRef = useRef<HTMLElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const swipeHandlers = useSwipe(onMove);
   const [metrics, setMetrics] = useState<BoardMetrics>(emptyMetrics);
   const [animationPhase, setAnimationPhase] = useState<{ animationId: number; value: "to" | "settled" } | null>(null);
+  const [swipeActive, setSwipeActive] = useState(false);
+  const handleSwipeActiveChange = useCallback((active: boolean) => {
+    setSwipeActive(active);
+  }, []);
+  const swipeDistance = metrics.cellSize > 0 ? Math.max(24, Math.min(44, metrics.cellSize * 0.18)) : 28;
+  const swipeHandlers = useSwipe(onMove, { minDistance: swipeDistance, onActiveChange: handleSwipeActiveChange });
 
   useEffect(() => {
     const element = boardRef.current;
@@ -92,9 +97,20 @@ export function GameBoard({ board, animation, onMove, onAnimatingChange }: GameB
     let moveFrame = 0;
     let settleTimeout = 0;
 
-    if (!animation || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (!animation) {
       onAnimatingChange(false);
       return;
+    }
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      onAnimatingChange(false);
+      moveFrame = window.requestAnimationFrame(() => {
+        setAnimationPhase({ animationId: animation.id, value: "settled" });
+      });
+
+      return () => {
+        window.cancelAnimationFrame(moveFrame);
+      };
     }
 
     onAnimatingChange(true);
@@ -122,7 +138,7 @@ export function GameBoard({ board, animation, onMove, onAnimatingChange }: GameB
   return (
     <section
       ref={boardRef}
-      className="relative mx-auto aspect-square w-full touch-none select-none overflow-hidden rounded-[24px] bg-[#B8AA9D] p-2 min-[820px]:rounded-[28px] min-[820px]:p-2.5"
+      className={`relative mx-auto aspect-square w-full touch-none select-none overflow-hidden rounded-[24px] p-2 transition-[background-color,transform] duration-100 will-change-transform min-[820px]:rounded-[28px] min-[820px]:p-2.5 ${swipeActive ? "scale-[0.985] bg-[#AA9D91]" : "scale-100 bg-[#B8AA9D]"}`}
       aria-label="2048 棋盘"
       {...swipeHandlers}
     >
