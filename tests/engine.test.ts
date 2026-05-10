@@ -207,6 +207,21 @@ describe("2048 engine", () => {
     assert.equal(canMove(board), false);
   });
 
+  it("changes from won to lost when no moves remain after continuing", () => {
+    const state = makeState([
+      null, 2, 4, 8,
+      16, 32, 64, 128,
+      256, 512, 1024, 2048,
+      4, 8, 16, 32,
+    ]);
+    state.status = "won";
+
+    const next = move(state, "left", { random: () => 0 });
+
+    assert.equal(next.status, "lost");
+    assert.equal(canMove(next.board), false);
+  });
+
   it("calculates best score progress", () => {
     assert.equal(calculateBestProgress(50, 200), 25);
     assert.equal(calculateBestProgress(300, 200), 100);

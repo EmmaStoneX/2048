@@ -129,11 +129,11 @@ function valuesEqual(left: Board, right: Board) {
 }
 
 function resolveStatus(board: Board) {
-  if (hasWon(board)) {
-    return "won";
+  if (!canMove(board)) {
+    return "lost";
   }
 
-  return canMove(board) ? "playing" : "lost";
+  return hasWon(board) ? "won" : "playing";
 }
 
 function addRandomTileForMove(board: Board, random: RandomSource = Math.random): SpawnedBoard {
