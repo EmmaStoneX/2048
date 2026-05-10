@@ -153,14 +153,30 @@ export function Game() {
       <section className="mx-auto flex h-full w-full max-w-[430px] flex-col overflow-hidden bg-[#F3EBE2] px-3 py-3 shadow-[0_20px_60px_rgba(26,26,26,0.16)] min-[820px]:px-5 min-[820px]:py-5 sm:max-h-[932px] sm:rounded-[40px]">
         <div className="flex flex-1 flex-col justify-between gap-2.5">
           <header>
-            <h1 className="text-3xl font-black leading-none tracking-tight min-[820px]:text-5xl">2048</h1>
-            <p className="mt-1 text-xs font-medium text-[#6B6B6B] min-[820px]:text-sm">{subtitle}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h1 className="text-3xl font-black leading-none tracking-tight min-[820px]:text-5xl">2048</h1>
+                <p className="mt-1 text-xs font-medium text-[#6B6B6B] min-[820px]:text-sm">{subtitle}</p>
+              </div>
+              <button
+                className="mt-1 flex shrink-0 items-center gap-1.5 rounded-full px-1.5 py-1 text-[11px] font-bold text-[#6B6B6B] transition active:scale-[0.99]"
+                type="button"
+                onClick={handleToggleSound}
+                aria-label={`音效已${soundEnabled ? "开启" : "关闭"}`}
+                aria-pressed={soundEnabled}
+              >
+                <span>音效</span>
+                <span className={`flex h-[18px] w-8 items-center rounded-full p-0.5 transition ${soundEnabled ? "bg-[#D4916E]" : "bg-[#D8CEC4]"}`} aria-hidden="true">
+                  <span className={`h-3.5 w-3.5 rounded-full bg-white shadow-[0_1px_3px_rgba(26,26,26,0.18)] transition ${soundEnabled ? "translate-x-3.5" : "translate-x-0"}`} />
+                </span>
+              </button>
+            </div>
           </header>
 
           <ScorePanel score={state.score} bestScore={state.bestScore} />
           <GameStatus status={state.status} />
           <GameBoard board={state.board} animation={state.animation} onMove={handleMove} onAnimatingChange={handleAnimatingChange} />
-          <GameActions canUndo={state.previous !== null} soundEnabled={soundEnabled} onUndo={handleUndo} onNewGame={handleNewGame} onToggleSound={handleToggleSound} />
+          <GameActions canUndo={state.previous !== null} onUndo={handleUndo} onNewGame={handleNewGame} />
           <BestProgress score={state.score} bestScore={state.bestScore} />
         </div>
       </section>

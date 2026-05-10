@@ -1,12 +1,10 @@
 type GameActionsProps = {
   canUndo: boolean;
-  soundEnabled: boolean;
   onUndo: () => void;
   onNewGame: () => void;
-  onToggleSound: () => void;
 };
 
-export function GameActions({ canUndo, soundEnabled, onUndo, onNewGame, onToggleSound }: GameActionsProps) {
+export function GameActions({ canUndo, onUndo, onNewGame }: GameActionsProps) {
   return (
     <section className="grid grid-cols-2 gap-3" aria-label="游戏操作">
       <button
@@ -23,14 +21,6 @@ export function GameActions({ canUndo, soundEnabled, onUndo, onNewGame, onToggle
         onClick={onNewGame}
       >
         新游戏
-      </button>
-      <button
-        className="col-span-2 min-h-10 rounded-full bg-[#FFF8EF] px-5 text-sm font-black text-[#6B6B6B] transition active:scale-[0.99] min-[820px]:min-h-12"
-        type="button"
-        onClick={onToggleSound}
-        aria-pressed={soundEnabled}
-      >
-        音效：{soundEnabled ? "开" : "关"}
       </button>
     </section>
   );
