@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BOARD_CELLS, createInitialState, move, undo } from "@/src/game/engine";
-import { readBestScore, writeBestScore } from "@/src/game/storage";
+import { playLoseSound, playMergeSound, playMoveSound, playWinSound, setSoundEnabled, unlockAudio } from "@/src/game/audio";
+import { readBestScore, readSoundEnabled, writeBestScore, writeSoundEnabled } from "@/src/game/storage";
 import type { Direction, GameState } from "@/src/game/types";
 import { BestProgress } from "./BestProgress";
 import { GameActions } from "./GameActions";
@@ -29,11 +30,15 @@ const keyMap: Record<string, Direction | undefined> = {
 export function Game() {
   const [state, setState] = useState<GameState>(emptyState);
   const [ready, setReady] = useState(false);
+  const [soundEnabled, setSoundEnabledState] = useState(true);
   const stateRef = useRef<GameState>(emptyState);
   const animationLocked = useRef(false);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
+      const enabled = readSoundEnabled();
+      setSoundEnabledState(enabled);
+      setSoundEnabled(enabled);
       setState(createInitialState(readBestScore()));
       setReady(true);
     }, 0);
@@ -52,6 +57,8 @@ export function Game() {
   }, [ready, state.bestScore]);
 
   const handleMove = useCallback((direction: Direction) => {
+    unlockAudio();
+
     if (animationLocked.current) {
       return;
     }
@@ -61,6 +68,22 @@ export function Game() {
 
     if (next === current) {
       return;
+    }
+
+    const mergeCount = next.animation?.moves.filter((tileMove) => tileMove.kind === "merge").length ?? 0;
+
+    if (mergeCount > 0) {
+      playMergeSound(mergeCount);
+    } else {
+      playMoveSound();
+    }
+
+    if (current.status !== "won" && next.status === "won") {
+      playWinSound();
+    }
+
+    if (current.status !== "lost" && next.status === "lost") {
+      playLoseSound();
     }
 
     stateRef.current = next;
@@ -94,6 +117,7 @@ export function Game() {
   }, [handleMove]);
 
   const handleNewGame = useCallback(() => {
+    unlockAudio();
     animationLocked.current = false;
     const next = createInitialState(stateRef.current.bestScore);
     stateRef.current = next;
@@ -101,11 +125,20 @@ export function Game() {
   }, []);
 
   const handleUndo = useCallback(() => {
+    unlockAudio();
     animationLocked.current = false;
     const next = undo(stateRef.current);
     stateRef.current = next;
     setState(next);
   }, []);
+
+  const handleToggleSound = useCallback(() => {
+    unlockAudio();
+    const next = !soundEnabled;
+    setSoundEnabledState(next);
+    setSoundEnabled(next);
+    writeSoundEnabled(next);
+  }, [soundEnabled]);
 
   const subtitle = useMemo(() => {
     if (!ready) {
@@ -127,7 +160,7 @@ export function Game() {
           <ScorePanel score={state.score} bestScore={state.bestScore} />
           <GameStatus status={state.status} />
           <GameBoard board={state.board} animation={state.animation} onMove={handleMove} onAnimatingChange={handleAnimatingChange} />
-          <GameActions canUndo={state.previous !== null} onUndo={handleUndo} onNewGame={handleNewGame} />
+          <GameActions canUndo={state.previous !== null} soundEnabled={soundEnabled} onUndo={handleUndo} onNewGame={handleNewGame} onToggleSound={handleToggleSound} />
           <BestProgress score={state.score} bestScore={state.bestScore} />
         </div>
       </section>
